@@ -433,21 +433,27 @@ func (e *Engine) registerTrigger(ctx context.Context, t *triggerCapability, trig
 	}
 	eventsCh, err := t.trigger.RegisterTrigger(ctx, triggerRegRequest)
 	if err != nil {
-		e.metrics.With(platform.KeyTriggerID, triggerID).IncrementRegisterTriggerFailureCounter(ctx)
-		// It's confusing that t.ID is different from triggerID, but
-		// t.ID is the capability ID, and triggerID is the trigger ID.
-		//
-		// The capability ID is globally scoped, whereas the trigger ID
-		// is scoped to this workflow.
-		//
-		// For example, t.ID might be "streams-trigger:network=mainnet@1.0.0"
-		// and triggerID might be "wf_123_trigger_0"
-		return &workflowError{err: err, reason: fmt.Sprintf("failed to register trigger: %+v", triggerRegRequest),
-			labels: map[string]string{
-				platform.KeyWorkflowID:   e.workflow.id,
-				platform.KeyCapabilityID: t.ID,
-				platform.KeyTriggerID:    triggerID,
-			}}
+		if !errors.Is(err, capabilities.ErrUnableToDetermineRegistrationStatus) {
+			e.metrics.With(platform.KeyTriggerID, triggerID).IncrementRegisterTriggerFailureCounter(ctx)
+			// It's confusing that t.ID is different from triggerID, but
+			// t.ID is the capability ID, and triggerID is the trigger ID.
+			//
+			// The capability ID is globally scoped, whereas the trigger ID
+			// is scoped to this workflow.
+			//
+			// For example, t.ID might be "streams-trigger:network=mainnet@1.0.0"
+			// and triggerID might be "wf_123_trigger_0"
+			return &workflowError{err: err, reason: fmt.Sprintf("failed to register trigger: %+v", triggerRegRequest),
+				labels: map[string]string{
+					platform.KeyWorkflowID:   e.workflow.id,
+					platform.KeyCapabilityID: t.ID,
+					platform.KeyTriggerID:    triggerID,
+				}}
+		}
+
+		// For backwards compatibility log a warning and ignore, may be running against an old capabilities DON
+		// Possible this may be made mandatory in the future once DON migration is complete.
+		e.logger.Warnw("unable to determine trigger registration status for trigger registration request", "triggerID", triggerID)
 	}
 
 	// mark the trigger as successfully registered
