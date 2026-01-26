@@ -1040,6 +1040,7 @@ func newCREServices(
 		if err != nil {
 			return nil, fmt.Errorf("failed to create org resolver: %w", err)
 		}
+		orgResolver = orgresolver.NewCache(orgResolver)
 		srvcs = append(srvcs, orgResolver)
 	} else {
 		globalLogger.Warn("OrgResolver not created - no linking service URL configured")

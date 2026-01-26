@@ -353,7 +353,7 @@ func (e *Engine) runTriggerSubscriptionPhase(ctx context.Context) error {
 		Request:         &sdkpb.ExecuteRequest_Subscribe{},
 		MaxResponseSize: uint64(moduleExecuteMaxResponseSizeBytes), //nolint:gosec // G115
 		Config:          e.cfg.WorkflowConfig,
-	}, NewDisallowedExecutionHelper(e.logger(), userLogChan, timeProvider, e.secretsFetcher(e.cfg.WorkflowID)))
+	}, NewDisallowedExecutionHelper(e.logger(), userLogChan, timeProvider, e.secretsFetcher(contexts.CREValue(ctx).Org, e.cfg.WorkflowID)))
 	if err != nil {
 		return fmt.Errorf("failed to execute subscribe: %w", err)
 	}
@@ -578,23 +578,20 @@ func (e *Engine) startExecution(ctx context.Context, wrappedTriggerEvent enqueue
 	}
 
 	// Fetch organization ID for this execution
-	organizationID := contexts.CREValue(ctx).Org
+	creCtx := contexts.CREValue(ctx)
 	if e.cfg.OrgResolver != nil {
 		orgID, gerr := e.cfg.OrgResolver.Get(ctx, e.cfg.WorkflowOwner)
 		if gerr != nil {
 			e.logger().Warnw("Failed to resolve organization ID, continuing without it", "workflowOwner", e.cfg.WorkflowOwner, "err", gerr)
 		} else {
-			organizationID = orgID
-
-			creCtx := contexts.CREValue(ctx)
-			creCtx.Org = organizationID
+			creCtx.Org = orgID
 			ctx = contexts.WithCRE(ctx, creCtx)
 		}
 	}
 	loggerLabels := maps.Clone(*e.loggerLabels.Load())
-	loggerLabels[platform.KeyOrganizationID] = organizationID
+	loggerLabels[platform.KeyOrganizationID] = creCtx.Org
 	e.loggerLabels.Store(&loggerLabels)
-	lggr := e.logger().With(platform.KeyOrganizationID, organizationID)
+	lggr := e.logger().With(platform.KeyOrganizationID, creCtx.Org)
 
 	e.metrics.UpdateTotalWorkflowsGauge(ctx, executingWorkflows.Add(1))
 	defer e.metrics.UpdateTotalWorkflowsGauge(ctx, executingWorkflows.Add(-1))
@@ -664,7 +661,7 @@ func (e *Engine) startExecution(ctx context.Context, wrappedTriggerEvent enqueue
 	}
 	execHelper := &ExecutionHelper{
 		Engine: e, WorkflowExecutionID: executionID, UserLogChan: userLogChan,
-		TimeProvider: timeProvider, SecretsFetcher: e.secretsFetcher(executionID),
+		TimeProvider: timeProvider, SecretsFetcher: e.secretsFetcher(creCtx.Org, executionID),
 	}
 	execHelper.initLimiters(e.cfg.LocalLimiters)
 	result, execErr := e.cfg.Module.Execute(execCtx, &sdkpb.ExecuteRequest{
@@ -742,7 +739,7 @@ func (e *Engine) startExecution(ctx context.Context, wrappedTriggerEvent enqueue
 	e.cfg.Hooks.OnExecutionFinished(executionID, executionStatus)
 }
 
-func (e *Engine) secretsFetcher(phaseID string) SecretsFetcher {
+func (e *Engine) secretsFetcher(orgID string, phaseID string) SecretsFetcher {
 	if e.cfg.SecretsFetcher != nil {
 		return e.cfg.SecretsFetcher
 	}
@@ -753,6 +750,7 @@ func (e *Engine) secretsFetcher(phaseID string) SecretsFetcher {
 		e.logger(),
 		e.cfg.LocalLimiters.SecretsConcurrency,
 		e.cfg.LocalLimiters.SecretsCalls,
+		orgID,
 		e.cfg.WorkflowOwner,
 		e.cfg.WorkflowName.String(),
 		e.cfg.WorkflowID,
@@ -766,7 +764,9 @@ func (e *Engine) secretsFetcher(phaseID string) SecretsFetcher {
 func (e *Engine) close() error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*time.Duration(e.cfg.LocalLimits.ShutdownTimeoutMs))
 	defer cancel()
-	ctx = contexts.WithCRE(ctx, contexts.CRE{Owner: e.cfg.WorkflowOwner, Workflow: e.cfg.WorkflowID}) // TODO org?
+
+	// Note: we don't bother with org ID here since it has no effect when only calling [limits.ResourceLimiter.Free]
+	ctx = contexts.WithCRE(ctx, contexts.CRE{Owner: e.cfg.WorkflowOwner, Workflow: e.cfg.WorkflowID})
 	e.triggersRegMu.Lock()
 	e.unregisterAllTriggers(ctx)
 	e.triggersRegMu.Unlock()

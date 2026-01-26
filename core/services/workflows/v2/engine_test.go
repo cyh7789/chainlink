@@ -1538,6 +1538,7 @@ func TestSecretsFetcher_Integration(t *testing.T) {
 		cfg.Lggr,
 		cfg.LocalLimiters.SecretsConcurrency,
 		cfg.LocalLimiters.SecretsCalls,
+		"workflowOrg",
 		cfg.WorkflowOwner,
 		cfg.WorkflowName.String(),
 		cfg.WorkflowID,

@@ -1626,6 +1626,7 @@ func (r *ReportingPlugin) stateTransitionCreateSecretsRequest(ctx context.Contex
 		return nil, fmt.Errorf("failed to read secret identifiers count for owner: %w", err)
 	}
 
+	// TODO orgID https://smartcontract-it.atlassian.net/browse/CRE-1707
 	ctx = contexts.WithCRE(ctx, contexts.CRE{Owner: req.Id.Owner})
 	if ierr := r.cfg.MaxSecretsPerOwner.Check(ctx, count+1); ierr != nil {
 		var errBoundLimited limits.ErrorBoundLimited[int]

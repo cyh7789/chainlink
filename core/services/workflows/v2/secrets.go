@@ -42,6 +42,7 @@ type secretsFetcher struct {
 	secretsCalled     int
 	mu                sync.Mutex
 
+	workflowOrg           string
 	workflowOwner         string
 	workflowName          string
 	workflowID            string
@@ -57,6 +58,7 @@ func NewSecretsFetcher(
 	lggr logger.Logger,
 	semaphore limits.ResourcePoolLimiter[int],
 	secretsCalls limits.BoundLimiter[int],
+	workflowOrg string,
 	workflowOwner string,
 	workflowName string,
 	workflowID string,
@@ -70,6 +72,7 @@ func NewSecretsFetcher(
 		lggr:                  lggr,
 		semaphore:             semaphore,
 		secretsCallsLimit:     secretsCalls,
+		workflowOrg:           workflowOrg,
 		workflowOwner:         workflowOwner,
 		workflowName:          workflowName,
 		phaseID:               phaseID,
@@ -84,8 +87,9 @@ func keyFor(owner, namespace, id string) string {
 
 func (s *secretsFetcher) GetSecrets(ctx context.Context, request *sdkpb.GetSecretsRequest) ([]*sdkpb.SecretResponse, error) {
 	ctx = contexts.WithCRE(ctx, contexts.CRE{
+		Org:      s.workflowOrg,
 		Owner:    s.workflowOwner,
-		Workflow: s.workflowName,
+		Workflow: s.workflowID,
 	})
 	s.mu.Lock()
 	secretsCalled := s.secretsCalled + 1
