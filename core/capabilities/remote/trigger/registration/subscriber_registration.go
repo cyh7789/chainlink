@@ -58,10 +58,6 @@ func (sr *SubscriberRegistration) HandleTriggerRegistrationStatusUpdate(sender p
 	sr.registrationStatusUpdateCache.DeleteOlderThan(nowMs - registrationExpiry.Milliseconds())
 
 	meta := msg.GetTriggerRegistrationMetadata()
-	if meta == nil {
-		sr.lggr.Errorw("received trigger registration status update message with invalid trigger metadata", "sender", sender)
-		return
-	}
 
 	if meta.Status == types.RegistrationStatus_REGISTRATION_ERROR {
 		sr.registrationStatusUpdateCache.Insert(registrationStatusUpdateCacheKey, sender, nowMs, []byte(meta.RegistrationError))

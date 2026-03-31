@@ -423,7 +423,7 @@ func ExecuteEVMLogTriggerUserErrorTest(t *testing.T, testEnv *ttypes.TestEnviron
 		// Wait for a beholder message containing the user error "no valid addresses provided (at least one address is required)"
 		expectedBeholderLog := "no valid addresses provided (at least one address is required)"
 
-		_, err := t_helpers.WaitForBaseMessageAndLabels(ctx, t, lggr, baseMessageCh, "Trigger registration failed due to user error", []string{"err", "triggerID"},
+		_, err := t_helpers.WaitForBaseMessageAndLabels(ctx, t, lggr, baseMessageCh, "Trigger registration failed due to user error", []string{"userErr", "triggerID"},
 			[]string{expectedBeholderLog, strconv.FormatUint(bcOutput.ChainSelector(), 10)})
 		if err != nil {
 			lggr.Error().Msgf("failed to find expected user log error message: %v", err)

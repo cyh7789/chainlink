@@ -473,15 +473,17 @@ func (e *Engine) runTriggerSubscriptionPhase(ctx context.Context) error {
 				// no Config needed - NoDAG uses Payload
 			})
 			if regErr != nil {
+				// This error type is required during migration of all DONS to support trigger registration status messages https://smartcontract-it.atlassian.net/browse/CAPPL-1370
 				if !errors.Is(regErr, capabilities.ErrUnableToDetermineRegistrationStatus) {
-					// If the error is a capability error, further categorize it for metrics
+					// TODO This error type is temporarily required during migration of all DONS to support trigger registration status messages.
+					// TODO Jira to remove once migration completed https://smartcontract-it.atlassian.net/browse/CAPPL-1370
 					var capErr caperrors.Error
 					if errors.As(regErr, &capErr) {
 						if capErr.Origin() == caperrors.OriginUser {
-							e.logger().Errorw("Trigger registration failed due to user error", "triggerID", sub.Id, "err", regErr)
+							e.logger().Errorw("Trigger registration failed due to user error", "triggerID", sub.Id, "userErr", regErr)
 							e.metrics.With(platform.KeyTriggerID, sub.Id, platform.KeyCapabilityErrorCode, capErr.Code().String()).IncrementRegisterTriggerFailureDueToUserErrorCounter(gCtx)
 						} else {
-							e.logger().Errorw("Trigger registration failed due to system error", "triggerID", sub.Id, "err", regErr)
+							e.logger().Errorw("Trigger registration failed due to system error", "triggerID", sub.Id, "systemErr", regErr)
 							e.metrics.With(platform.KeyTriggerID, sub.Id, platform.KeyCapabilityErrorCode, capErr.Code().String()).IncrementRegisterTriggerFailureCounter(gCtx)
 						}
 					} else {

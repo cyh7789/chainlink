@@ -433,6 +433,8 @@ func (e *Engine) registerTrigger(ctx context.Context, t *triggerCapability, trig
 	}
 	eventsCh, err := t.trigger.RegisterTrigger(ctx, triggerRegRequest)
 	if err != nil {
+		// TODO This error type is temporarily required during migration of all DONS to support trigger registration status messages.
+		// TODO Jira to remove once migration completed https://smartcontract-it.atlassian.net/browse/CAPPL-1370
 		if !errors.Is(err, capabilities.ErrUnableToDetermineRegistrationStatus) {
 			e.metrics.With(platform.KeyTriggerID, triggerID).IncrementRegisterTriggerFailureCounter(ctx)
 			// It's confusing that t.ID is different from triggerID, but
