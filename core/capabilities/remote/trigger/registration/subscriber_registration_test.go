@@ -173,12 +173,12 @@ func TestSubscriberRegistration_UnsuccessfulRegistration_MixedErrors(t *testing.
 	err := reg.AwaitRegistration(ctx)
 	require.Error(t, err)
 	require.NotNil(t, reg.GetTriggerResponseChannel())
-	require.Contains(t, err.Error(), "[2]Unknown: received 3 errors, last error OK")
+	require.Contains(t, err.Error(), "[100]ConsensusFailed: received 3 errors, last error OK")
 
 	// Ensure that the second wait for response returns immediately
 	err = reg.AwaitRegistration(ctx)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "[2]Unknown: received 3 errors, last error OK")
+	require.Contains(t, err.Error(), "[100]ConsensusFailed: received 3 errors, last error OK")
 
 	wg.Wait()
 }

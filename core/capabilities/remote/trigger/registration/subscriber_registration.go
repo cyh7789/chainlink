@@ -116,7 +116,7 @@ func (sr *SubscriberRegistration) HandleTriggerRegistrationStatusUpdate(sender p
 			if totalErrorCount >= publisherNodeCount-int(minResponseToAggregate)+1 {
 				// There is no consensus error, return a generic error message
 				sr.setRegistrationStatus(types.RegistrationStatus_REGISTRATION_ERROR,
-					caperrors.NewPublicSystemError(fmt.Errorf("received %d errors, last error %s : %s", totalErrorCount, msg.Error, log.SanitizeLogString(lastErr)), caperrors.Unknown))
+					caperrors.NewPublicSystemError(fmt.Errorf("received %d errors, last error %s : %s", totalErrorCount, msg.Error, log.SanitizeLogString(lastErr)), caperrors.ConsensusFailed))
 			}
 		}
 	}
