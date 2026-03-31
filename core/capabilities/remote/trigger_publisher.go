@@ -211,7 +211,7 @@ func (p *triggerPublisher) Receive(_ context.Context, msg *types.MessageBody) {
 			p.lggr.Debugw("using existing trigger registration already exists", "registrationID", regID)
 		}
 
-		ctx, _ := p.stopCh.NewCtx() // TODO why does existing code use this context and not that received by Receive?
+		ctx, _ := p.stopCh.NewCtx()
 		reg.AddRegistrationRequest(ctx, sender, msg.Payload, callerDon, cfg.remoteConfig.RegistrationExpiry)
 	case types.MethodTriggerEvent:
 		p.lggr.Errorw("trigger request failed with error",
