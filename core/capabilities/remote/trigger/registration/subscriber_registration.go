@@ -117,6 +117,14 @@ func (sr *SubscriberRegistration) HandleTriggerRegistrationStatusUpdate(sender p
 				// There is no consensus error, return a generic error message
 				sr.setRegistrationStatus(types.RegistrationStatus_REGISTRATION_ERROR,
 					caperrors.NewPublicSystemError(fmt.Errorf("received %d errors, last error %s : %s", totalErrorCount, msg.Error, log.SanitizeLogString(lastErr)), caperrors.ConsensusFailed))
+
+				// Log all the errors received to help diagnose why consensus failed.
+				// First sanitize the error messages and then log them in a single log line to ensure they are not interleaved with other log messages.
+				var sanitizedErrStrs []string
+				for _, errStr := range errStrs {
+					sanitizedErrStrs = append(sanitizedErrStrs, log.SanitizeLogString(errStr))
+				}
+				sr.lggr.Warnw("failed to achieve consensus on trigger registration errors", "errors", sanitizedErrStrs)
 			}
 		}
 	}

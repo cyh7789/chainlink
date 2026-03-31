@@ -162,7 +162,7 @@ func TestSubscriberRegistration_UnsuccessfulRegistration_MixedErrors(t *testing.
 	go func() {
 		defer wg.Done()
 		capDonF := uint8(1)
-		minResponsesToAggregate := uint32(capDonF + 1)
+		minResponsesToAggregate := uint32(capDonF + 2)
 		numberOfCapabilityNodes := int(capDonF*2 + 1)
 		messageExpiry := 60000 * time.Millisecond
 		reg.HandleTriggerRegistrationStatusUpdate(peers[0], createRegisterResponseMessageWithError(errMsg1), minResponsesToAggregate, messageExpiry, numberOfCapabilityNodes)
