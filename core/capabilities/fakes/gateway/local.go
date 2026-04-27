@@ -52,6 +52,10 @@ type LocalGateway struct {
 	config Config
 }
 
+func NewLocalGateway(config Config) *LocalGateway {
+	return &LocalGateway{config: config}
+}
+
 func (g *LocalGateway) ListenForTriggerPayload(ctx context.Context) (*httptypedapi.Payload, error) {
 	payloadCh := make(chan *httptypedapi.Payload, 1)
 	errorCh := make(chan error, 1)

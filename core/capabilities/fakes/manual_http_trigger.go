@@ -40,14 +40,19 @@ type ManualHTTPTriggerService struct {
 	inputs      map[string]*httptypedapi.Config
 }
 
-func NewManualHTTPTriggerService(parentLggr logger.Logger) *ManualHTTPTriggerService {
+func NewManualHTTPTriggerService(parentLggr logger.Logger, gatewayConfig gateway.Config) *ManualHTTPTriggerService {
 	lggr := logger.Named(parentLggr, "HTTPTriggerService")
+	localGateway := gateway.NewLocalGateway(gatewayConfig)
 
 	return &ManualHTTPTriggerService{
 		CapabilityInfo: manualHTTPTriggerInfo,
-		lggr:           lggr,
-		callbackCh:     make(map[string]chan capabilities.TriggerAndId[*httptypedapi.Payload]),
-		workflowIDs:    make(map[string]string),
+
+		lggr:    lggr,
+		gateway: localGateway,
+
+		callbackCh:  make(map[string]chan capabilities.TriggerAndId[*httptypedapi.Payload]),
+		workflowIDs: make(map[string]string),
+		inputs:      make(map[string]*httptypedapi.Config),
 	}
 }
 
