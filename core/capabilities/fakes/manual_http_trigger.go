@@ -2,6 +2,8 @@ package fakes
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/smartcontractkit/chainlink-common/pkg/capabilities"
 	caperrors "github.com/smartcontractkit/chainlink-common/pkg/capabilities/errors"
@@ -10,6 +12,7 @@ import (
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	"github.com/smartcontractkit/chainlink-common/pkg/services"
 	"github.com/smartcontractkit/chainlink-common/pkg/types/core"
+	"github.com/smartcontractkit/chainlink/v2/core/capabilities/fakes/gateway"
 
 	"github.com/smartcontractkit/chainlink/v2/core/services/workflows/events"
 )
@@ -28,9 +31,13 @@ var manualHTTPTriggerInfo = capabilities.MustNewCapabilityInfo(
 
 type ManualHTTPTriggerService struct {
 	capabilities.CapabilityInfo
-	lggr        logger.Logger
+
+	lggr    logger.Logger
+	gateway *gateway.LocalGateway
+
 	callbackCh  map[string]chan capabilities.TriggerAndId[*httptypedapi.Payload]
 	workflowIDs map[string]string // triggerID -> workflowID mapping
+	inputs      map[string]*httptypedapi.Config
 }
 
 func NewManualHTTPTriggerService(parentLggr logger.Logger) *ManualHTTPTriggerService {
@@ -46,6 +53,7 @@ func NewManualHTTPTriggerService(parentLggr logger.Logger) *ManualHTTPTriggerSer
 
 // HTTPCapability interface methods
 func (f *ManualHTTPTriggerService) RegisterTrigger(ctx context.Context, triggerID string, metadata capabilities.RequestMetadata, input *httptypedapi.Config) (<-chan capabilities.TriggerAndId[*httptypedapi.Payload], caperrors.Error) {
+	f.inputs[triggerID] = input
 	f.callbackCh[triggerID] = make(chan capabilities.TriggerAndId[*httptypedapi.Payload])
 	f.workflowIDs[triggerID] = metadata.WorkflowID
 	return f.callbackCh[triggerID], nil
@@ -65,16 +73,35 @@ func (f *ManualHTTPTriggerService) Initialise(ctx context.Context, dependencies 
 }
 
 // ManualTriggerCapability interface method
-func (f *ManualHTTPTriggerService) ManualTrigger(ctx context.Context, triggerID string, payload *httptypedapi.Payload) error {
-	triggerEvent := f.createManualTriggerEvent(payload)
-
-	triggerEventID := triggerEvent.Id
-
+func (f *ManualHTTPTriggerService) ManualTrigger(ctx context.Context, triggerID string, payload *httptypedapi.Payload) (err error) {
 	workflowID, exists := f.workflowIDs[triggerID]
 	if !exists {
 		f.lggr.Errorw("workflowID not found for triggerID", "triggerID", triggerID)
 		workflowID = "unknownWorkflow"
 	}
+
+	input, exists := f.inputs[triggerID]
+	if !exists {
+		f.lggr.Errorw("input not found for triggerID", "triggerID", triggerID)
+		return errors.New("input not found for triggerID")
+	}
+
+	if payload == nil {
+		payload, err = f.gateway.ListenForTriggerPayload(ctx)
+		if err != nil {
+			return fmt.Errorf("gateway: %w", err)
+		}
+	}
+
+	if payload.Key != nil {
+		if err := validateAuthorizedKeys(payload.Key, input.AuthorizedKeys); err != nil {
+			f.lggr.Errorw("payload validation failed", "payload", payload, "err", err)
+			return fmt.Errorf("key validation failed: %w", err)
+		}
+	}
+
+	triggerEvent := f.createManualTriggerEvent(payload)
+	triggerEventID := triggerEvent.Id
 
 	workflowExecutionID, err := events.GenerateExecutionID(workflowID, triggerEventID)
 	if err != nil {
@@ -98,6 +125,22 @@ func (f *ManualHTTPTriggerService) ManualTrigger(ctx context.Context, triggerID 
 	}()
 
 	return nil
+}
+
+func validateAuthorizedKeys(key *httptypedapi.AuthorizedKey, authorizedKeys []*httptypedapi.AuthorizedKey) error {
+	if len(authorizedKeys) == 0 {
+		return fmt.Errorf("no authorized keys provided")
+	}
+
+	for _, authorizedKey := range authorizedKeys {
+		if key.Type.String() == authorizedKey.Type.String() &&
+			key.PublicKey == authorizedKey.PublicKey {
+			// key matches, no error to return
+			return nil
+		}
+	}
+
+	return errors.New("no authorized keys matched the provided key")
 }
 
 func (f *ManualHTTPTriggerService) createManualTriggerEvent(payload *httptypedapi.Payload) capabilities.TriggerAndId[*httptypedapi.Payload] {
