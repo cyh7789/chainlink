@@ -62,14 +62,15 @@ func (g *LocalGateway) ListenForTriggerPayload(ctx context.Context) (*httptypeda
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		input, err := parseRequest(r)
+		input, pubKey, err := parseRequest(r)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("error processing request: %v", err), http.StatusBadRequest)
 			return
 		}
 
 		payloadCh <- &httptypedapi.Payload{
-			Input: input.Params.Input,
+			Input: input,
+			Key:   pubKey,
 		}
 		w.WriteHeader(http.StatusOK)
 	})
@@ -96,29 +97,30 @@ func (g *LocalGateway) ListenForTriggerPayload(ctx context.Context) (*httptypeda
 	}
 }
 
-func parseRequest(req *http.Request) (*JsonRpcRequest, error) {
+func parseRequest(req *http.Request) ([]byte, *httptypedapi.AuthorizedKey, error) {
 	if req.Method != http.MethodPost {
-		return nil, errors.New("gateway expects POST request")
+		return nil, nil, errors.New("gateway expects POST request")
 	}
 
 	authHeader := req.Header.Get("Authorization")
 	if strings.TrimSpace(authHeader) == "" {
-		return nil, errors.New("authorization header is missing")
+		return nil, nil, errors.New("authorization header is missing")
 	}
 
 	body, err := io.ReadAll(req.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read request body: %w", err)
+		return nil, nil, fmt.Errorf("failed to read request body: %w", err)
 	}
 
-	if err := validateBearerJWT(authHeader, body); err != nil {
-		return nil, fmt.Errorf("JWT validation failed: %w", err)
+	pubKey, err := validateBearerJWT(authHeader, body)
+	if err != nil {
+		return nil, nil, fmt.Errorf("JWT validation failed: %w", err)
 	}
 
-	var input JsonRpcRequest
-	if err := json.Unmarshal(body, &input); err != nil {
-		return nil, fmt.Errorf("failed to parse request body: %w", err)
+	var rpcRequest JsonRpcRequest
+	if err := json.Unmarshal(body, &rpcRequest); err != nil {
+		return nil, nil, fmt.Errorf("failed to parse request body: %w", err)
 	}
 
-	return &input, nil
+	return rpcRequest.Params.Input, pubKey, nil
 }

@@ -12,6 +12,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	httptypedapi "github.com/smartcontractkit/chainlink-common/pkg/capabilities/v2/triggers/http"
 )
 
 type JWTPayload struct {
@@ -22,28 +23,36 @@ type JWTPayload struct {
 	JwtID          string `json:"jti"`
 }
 
-func validateBearerJWT(header string, body []byte) error {
+func validateBearerJWT(header string, body []byte) (*httptypedapi.AuthorizedKey, error) {
 	header = strings.TrimSpace(header)
 	if !strings.HasPrefix(header, "Bearer ") {
-		return errors.New("invalid header")
+		return nil, errors.New("invalid header")
 	}
 	jwt := header[len("Bearer "):]
 	tokenParts := strings.Split(jwt, ".")
 	if len(tokenParts) != 3 {
-		return errors.New("invalid header")
+		return nil, errors.New("invalid header")
 	}
 
 	jwtHeader, jwtPayload, jwtSignature := tokenParts[0], tokenParts[1], tokenParts[2]
 	if err := validateJWTHeader(jwtHeader); err != nil {
-		return err
+		return nil, err
 	}
 
 	payload, err := validateJWTPayload(jwtPayload, body)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return validateJWTSignature(jwtHeader, jwtPayload, jwtSignature, payload.Issuer)
+	pubKey := payload.Issuer
+	if err := validateJWTSignature(jwtHeader, jwtPayload, jwtSignature, pubKey); err != nil {
+		return nil, err
+	}
+
+	return &httptypedapi.AuthorizedKey{
+		Type:      httptypedapi.KeyType_KEY_TYPE_ECDSA_EVM,
+		PublicKey: pubKey,
+	}, nil
 }
 
 func validateJWTHeader(header string) error {

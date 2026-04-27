@@ -138,8 +138,7 @@ func validateAuthorizedKeys(key *httptypedapi.AuthorizedKey, authorizedKeys []*h
 	}
 
 	for _, authorizedKey := range authorizedKeys {
-		if key.Type.String() == authorizedKey.Type.String() &&
-			key.PublicKey == authorizedKey.PublicKey {
+		if key.Type == authorizedKey.Type && key.PublicKey == authorizedKey.PublicKey {
 			// key matches, no error to return
 			return nil
 		}
