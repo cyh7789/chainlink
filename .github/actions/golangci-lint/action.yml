@@ -22,6 +22,18 @@ outputs:
   golang-report-artifact-url:
     description: The URL to the uploaded artifact
     value: ${{ steps.upload-artifact.outputs.artifact-url }}
+  golang-report-file-count:
+    description: The count of files with issues in the uploaded artifact
+    value: ${{ steps.print.outputs.file-count }}
+  golang-report-issue-count:
+    description: The count of issues in the uploaded artifact
+    value: ${{ steps.print.outputs.issue-count }}
+  golang-report-per-source-count:
+    description: The count of issues per source in the uploaded artifact
+    value: ${{ steps.print.outputs.per-source-count }}
+  golang-report-per-severity-count:
+    description: The count of issues per severity in the uploaded artifact
+    value: ${{ steps.print.outputs.per-severity-count }}
 
 runs:
   using: composite
@@ -76,9 +88,25 @@ runs:
         working-directory: ${{ steps.set-working-directory.outputs.golangci-lint-working-directory }}
 
     - name: Print Golangci-lint report results
+      id: print
       if: failure()
       shell: bash
-      run: cat ./${{ steps.set-working-directory.outputs.golangci-lint-working-directory }}golangci-lint-report.xml
+      run: |
+        cat ./${{ steps.set-working-directory.outputs.golangci-lint-working-directory }}golangci-lint-report.xml
+        echo "file-count=$( xmllint --xpath "count(//file)" checkstyle-result.xml )" >> $GITHUB_OUTPUT
+        echo "issue-count=$( xmllint --xpath "count(//error)" checkstyle-result.xml )" >> $GITHUB_OUTPUT
+        echo "per-source-count=$( | \ 
+          xmllint --xpath "//error/@source" checkstyle-result.xml | \
+          tr ' ' '\n' | \
+          sed 's/source="//;s/"//' | \
+          sort | uniq -c | sort -nr | \
+        )" >> $GITHUB_OUTPUT
+        echo "per-severity-count=$( | \ 
+          xmllint --xpath "//error/@severity" checkstyle-result.xml | \
+          tr ' ' '\n' | \
+          sed 's/severity="//;s/"//' | \
+          sort | uniq -c | sort -nr | \
+        )" >> $GITHUB_OUTPUT
 
       # Get a valid name for the upload-artifact step.
       # Avoid error: `The artifact name is not valid: <path>/<to>/<artifact>/` caused by `/`.
