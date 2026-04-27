@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/smartcontractkit/chainlink-common/pkg/capabilities"
 	caperrors "github.com/smartcontractkit/chainlink-common/pkg/capabilities/errors"
@@ -137,8 +138,10 @@ func validateAuthorizedKeys(key *httptypedapi.AuthorizedKey, authorizedKeys []*h
 		return fmt.Errorf("no authorized keys provided")
 	}
 
+	pubKey := strings.ToLower(key.PublicKey)
 	for _, authorizedKey := range authorizedKeys {
-		if key.Type == authorizedKey.Type && key.PublicKey == authorizedKey.PublicKey {
+		if key.Type == authorizedKey.Type &&
+			pubKey == strings.ToLower(authorizedKey.PublicKey) {
 			// key matches, no error to return
 			return nil
 		}
