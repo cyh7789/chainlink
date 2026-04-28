@@ -24,7 +24,8 @@ func waitForPort(t *testing.T, port uint16, timeout time.Duration) {
 	addr := fmt.Sprintf("127.0.0.1:%d", port)
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
-		conn, err := net.DialTimeout("tcp", addr, 50*time.Millisecond)
+		dialer := &net.Dialer{Timeout: 50 * time.Millisecond}
+		conn, err := dialer.DialContext(context.Background(), "tcp", addr)
 		if err == nil {
 			_ = conn.Close()
 			return

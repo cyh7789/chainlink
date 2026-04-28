@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	httptypedapi "github.com/smartcontractkit/chainlink-common/pkg/capabilities/v2/triggers/http"
 )
@@ -69,8 +70,9 @@ func (g *LocalGateway) ListenForTriggerPayload(ctx context.Context) (*httptypeda
 	})
 
 	server := &http.Server{
-		Addr:    fmt.Sprintf(":%d", g.config.Port),
-		Handler: mux,
+		Addr:              fmt.Sprintf(":%d", g.config.Port),
+		Handler:           mux,
+		ReadHeaderTimeout: time.Second,
 	}
 	defer server.Close()
 
