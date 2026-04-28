@@ -97,7 +97,7 @@ func validateJWTPayload(encodedPayload string, body []byte) (*JWTPayload, error)
 		return nil, errors.New("JWT token has expired")
 	}
 
-	// Validate jti (non-empty, replay protection)
+	// Validate jti (required non-empty JWT ID claim)
 	if strings.TrimSpace(payload.JwtID) == "" {
 		return nil, errors.New("missing jti claim")
 	}
