@@ -12,14 +12,14 @@ import (
 	httptypedapi "github.com/smartcontractkit/chainlink-common/pkg/capabilities/v2/triggers/http"
 )
 
-type BaseJsonRpc struct {
+type BaseJSONRPC struct {
 	Jsonrpc string `json:"jsonrpc"`
-	Id      string `json:"id"`
+	ID      string `json:"id"`
 	Method  string `json:"method"`
 }
 
-type JsonRpcRequest struct {
-	BaseJsonRpc
+type JSONRPCRequest struct {
+	BaseJSONRPC
 	Params struct {
 		Input    json.RawMessage `json:"input"`
 		Workflow struct {
@@ -28,8 +28,8 @@ type JsonRpcRequest struct {
 	} `json:"params"`
 }
 
-type JsonRpcResponse struct {
-	BaseJsonRpc
+type JSONRPCResponse struct {
+	BaseJSONRPC
 	Result struct {
 		WorkflowID          string `json:"workflow_id"`
 		WorkflowExecutionID string `json:"workflow_execution_id"`
@@ -110,7 +110,7 @@ func parseRequest(req *http.Request) ([]byte, *httptypedapi.AuthorizedKey, error
 		return nil, nil, fmt.Errorf("JWT validation failed: %w", err)
 	}
 
-	var rpcRequest JsonRpcRequest
+	var rpcRequest JSONRPCRequest
 	if err := json.Unmarshal(body, &rpcRequest); err != nil {
 		return nil, nil, fmt.Errorf("failed to parse request body: %w", err)
 	}

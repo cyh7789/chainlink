@@ -12,23 +12,11 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	httptypedapi "github.com/smartcontractkit/chainlink-common/pkg/capabilities/v2/triggers/http"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-)
 
-// getFreePort allocates and immediately releases an OS-assigned TCP port so it
-// can be handed off to a test server.  There is an inherent (but acceptable)
-// race between the Close and the subsequent Listen; we mitigate it with
-// waitForPort below.
-func getFreePort(t *testing.T) uint16 {
-	t.Helper()
-	ln, err := net.Listen("tcp", ":0")
-	require.NoError(t, err)
-	port := ln.Addr().(*net.TCPAddr).Port
-	require.NoError(t, ln.Close())
-	return uint16(port)
-}
+	httptypedapi "github.com/smartcontractkit/chainlink-common/pkg/capabilities/v2/triggers/http"
+)
 
 // waitForPort polls until the TCP port is reachable or the deadline passes.
 func waitForPort(t *testing.T, port uint16, timeout time.Duration) {
@@ -52,7 +40,7 @@ func waitForPort(t *testing.T, port uint16, timeout time.Duration) {
 //  2. A valid POST request carrying a signed JWT and a JSON-RPC body is sent.
 //  3. The method returns a Payload whose Input and Key match the request.
 func TestListenForTriggerPayload_HappyPath(t *testing.T) {
-	port := getFreePort(t)
+	var port uint16 = 30123
 	gw := NewLocalGateway(Config{Port: port})
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -121,4 +109,3 @@ func TestListenForTriggerPayload_HappyPath(t *testing.T) {
 	assert.Equal(t, expectedAddr, strings.ToLower(res.payload.Key.PublicKey))
 	assert.Equal(t, httptypedapi.KeyType_KEY_TYPE_ECDSA_EVM, res.payload.Key.Type)
 }
-

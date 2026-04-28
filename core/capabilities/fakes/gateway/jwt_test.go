@@ -396,4 +396,3 @@ func TestValidateJWTSignature_WrongSigner(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "does not match issuer")
 }
-

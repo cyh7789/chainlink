@@ -104,7 +104,7 @@ func (f *ManualHTTPTriggerService) ManualTrigger(ctx context.Context, triggerID 
 	}
 
 	if payload.Key != nil {
-		if err := validateAuthorizedKeys(payload.Key, input.AuthorizedKeys); err != nil {
+		if err = validateAuthorizedKeys(payload.Key, input.AuthorizedKeys); err != nil {
 			f.lggr.Errorw("payload validation failed", "payload", payload, "err", err)
 			return fmt.Errorf("key validation failed: %w", err)
 		}
@@ -139,7 +139,7 @@ func (f *ManualHTTPTriggerService) ManualTrigger(ctx context.Context, triggerID 
 
 func validateAuthorizedKeys(key *httptypedapi.AuthorizedKey, authorizedKeys []*httptypedapi.AuthorizedKey) error {
 	if len(authorizedKeys) == 0 {
-		return fmt.Errorf("no authorized keys provided")
+		return errors.New("no authorized keys provided")
 	}
 
 	pubKey := strings.ToLower(key.PublicKey)
