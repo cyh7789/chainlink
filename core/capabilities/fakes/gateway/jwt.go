@@ -84,16 +84,26 @@ func validateJWTPayload(encodedPayload string, body []byte) (*JWTPayload, error)
 		return nil, fmt.Errorf("failed to parse JWT payload: %w", err)
 	}
 
+	const allowedClockSkew = 30 * time.Second
+	now := time.Now().Unix()
+	allowedClockSkewSeconds := int64(allowedClockSkew / time.Second)
+
 	// Validate iat
 	if payload.IssueAtTime == 0 {
 		return nil, errors.New("missing iat claim")
+	}
+	if payload.IssueAtTime > now+allowedClockSkewSeconds {
+		return nil, errors.New("JWT token iat is in the future")
 	}
 
 	// Validate expiration
 	if payload.ExpirationTime == 0 {
 		return nil, errors.New("missing exp claim")
 	}
-	if time.Now().Unix() > payload.ExpirationTime {
+	if payload.ExpirationTime < payload.IssueAtTime {
+		return nil, errors.New("invalid JWT claims: exp is before iat")
+	}
+	if now > payload.ExpirationTime+allowedClockSkewSeconds {
 		return nil, errors.New("JWT token has expired")
 	}
 
