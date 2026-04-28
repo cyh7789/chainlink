@@ -91,6 +91,10 @@ func (f *ManualHTTPTriggerService) ManualTrigger(ctx context.Context, triggerID 
 		f.lggr.Errorw("input not found for triggerID", "triggerID", triggerID)
 		return errors.New("input not found for triggerID")
 	}
+	if input == nil {
+		f.lggr.Errorw("input is nil for triggerID", "triggerID", triggerID)
+		return errors.New("input is nil for triggerID")
+	}
 
 	if payload == nil {
 		payload, err = f.gateway.ListenForTriggerPayload(ctx)
