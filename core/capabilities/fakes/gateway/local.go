@@ -12,13 +12,6 @@ import (
 	httptypedapi "github.com/smartcontractkit/chainlink-common/pkg/capabilities/v2/triggers/http"
 )
 
-type TriggerInput []byte
-
-func (t *TriggerInput) UnmarshalJSON(bytes []byte) error {
-	*t = bytes
-	return nil
-}
-
 type BaseJsonRpc struct {
 	Jsonrpc string `json:"jsonrpc"`
 	Id      string `json:"id"`
@@ -28,7 +21,7 @@ type BaseJsonRpc struct {
 type JsonRpcRequest struct {
 	BaseJsonRpc
 	Params struct {
-		Input    TriggerInput `json:"input"`
+		Input    json.RawMessage `json:"input"`
 		Workflow struct {
 			WorkflowID string `json:"workflowID"`
 		} `json:"workflow"`
