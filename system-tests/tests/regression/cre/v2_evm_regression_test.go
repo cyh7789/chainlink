@@ -346,8 +346,8 @@ var evmNegativeTestsWriteReportInvalidReceiver = []evmNegativeTest{
 var evmNegativeTestsWriteReportCorruptReceiverAddress = []evmNegativeTest{
 	// WriteReport - corrupt receiver address
 	// malformed values
-	//	{"empty", "", writeReportCorruptReceiverAddress, expectedWriteReportCorruptReceiverAddress},
-	//	{"short address", "0x1234", writeReportCorruptReceiverAddress, expectedWriteReportCorruptReceiverAddress},
+	{"empty", "", writeReportCorruptReceiverAddress, expectedWriteReportCorruptReceiverAddress},
+	{"short address", "0x1234", writeReportCorruptReceiverAddress, expectedWriteReportCorruptReceiverAddress},
 	{"invalid address", "0x1234567890abcdefg1234567890abcdef1234567", writeReportCorruptReceiverAddress, expectedWriteReportCorruptReceiverAddress},
 }
 
