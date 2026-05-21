@@ -18,6 +18,9 @@ import (
 
 	confworkflowtypes "github.com/smartcontractkit/chainlink-common/pkg/capabilities/v2/actions/confidentialworkflow"
 	sdkpb "github.com/smartcontractkit/chainlink-protos/cre/go/sdk"
+	storage_service "github.com/smartcontractkit/chainlink-protos/storage-service/go"
+
+	workflowtypes "github.com/smartcontractkit/chainlink/v2/core/services/workflows/types"
 )
 
 const confidentialWorkflowsCapabilityID = "confidential-workflows@1.0.0-alpha"
@@ -62,7 +65,9 @@ func IsConfidential(data []byte) (bool, error) {
 // Instead of running WASM locally, it delegates execution to the
 // confidential-workflows capability via the CapabilitiesRegistry.
 type ConfidentialModule struct {
-	capRegistry     core.CapabilitiesRegistry
+	capRegistry core.CapabilitiesRegistry
+	// binaryURL is the registration-time URL kept for back-compat with callers
+	// that pass it; the actual fetch URL is minted per-execution via retrieveURL.
 	binaryURL       string
 	binaryHash      []byte
 	workflowID      string
@@ -70,7 +75,13 @@ type ConfidentialModule struct {
 	workflowName    string
 	workflowTag     string
 	vaultDonSecrets []SecretIdentifier
-	lggr            logger.Logger
+	// retrieveURL mints a fresh pre-signed CloudFront URL via storage service
+	// NodeService.DownloadArtifact at every Execute call. Each workflow DON
+	// node gets its own URL with its own signature and expiry, which is why
+	// the URL ends up on ConfidentialWorkflowRequest (outside the hash
+	// envelope) rather than inside WorkflowExecution.
+	retrieveURL workflowtypes.LocationRetrieverFunc
+	lggr        logger.Logger
 }
 
 var _ host.ModuleV2 = (*ConfidentialModule)(nil)
@@ -81,6 +92,7 @@ func NewConfidentialModule(
 	binaryHash []byte,
 	workflowID, workflowOwner, workflowName, workflowTag string,
 	vaultDonSecrets []SecretIdentifier,
+	retrieveURL workflowtypes.LocationRetrieverFunc,
 	lggr logger.Logger,
 ) *ConfidentialModule {
 	return &ConfidentialModule{
@@ -92,6 +104,7 @@ func NewConfidentialModule(
 		workflowName:    workflowName,
 		workflowTag:     workflowTag,
 		vaultDonSecrets: vaultDonSecrets,
+		retrieveURL:     retrieveURL,
 		lggr:            lggr,
 	}
 }
@@ -110,8 +123,19 @@ func (m *ConfidentialModule) Execute(
 		return nil, fmt.Errorf("failed to marshal ExecuteRequest: %w", err)
 	}
 
+	if m.retrieveURL == nil {
+		return nil, errors.New("confidential module is missing a URL retriever; cannot fetch binary from storage service")
+	}
+	binaryURL, err := m.retrieveURL(ctx, &storage_service.DownloadArtifactRequest{
+		Id:   m.workflowID,
+		Type: storage_service.ArtifactType_ARTIFACT_TYPE_BINARY,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to mint pre-signed binary URL from storage service: %w", err)
+	}
+
 	capInput := &confworkflowtypes.ConfidentialWorkflowRequest{
-		BinaryUrl: m.binaryURL,
+		BinaryUrl: binaryURL,
 		Execution: &confworkflowtypes.WorkflowExecution{
 			WorkflowId:     m.workflowID,
 			BinaryHash:     m.binaryHash,

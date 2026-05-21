@@ -87,6 +87,10 @@ type eventHandler struct {
 	billingClient          metering.BillingClient
 	orgResolver            orgresolver.OrgResolver
 	secretsFetcher         v2.SecretsFetcher
+	// retrieveURL mints a per-execution pre-signed CloudFront URL via the
+	// storage service for confidential workflows. Used by confidentialEngineFactory
+	// to wire a fresh URL into ConfidentialModule.Execute on every workflow run.
+	retrieveURL types.LocationRetrieverFunc
 	// localSecretOverrides is keyed by owner address; values are secret id -> secret value
 	localSecretOverrides map[string]map[string]string
 
@@ -147,6 +151,16 @@ func WithStaticEngine(engine services.Service) func(*eventHandler) {
 func WithBillingClient(client metering.BillingClient) func(*eventHandler) {
 	return func(e *eventHandler) {
 		e.billingClient = client
+	}
+}
+
+// WithLocationRetriever installs the LocationRetrieverFunc used by
+// confidentialEngineFactory to mint per-execution pre-signed download URLs
+// for the confidential workflow path. Without this, ConfidentialModule.Execute
+// will fail at runtime because there is no other way to obtain the URL.
+func WithLocationRetriever(fn types.LocationRetrieverFunc) func(*eventHandler) {
+	return func(e *eventHandler) {
+		e.retrieveURL = fn
 	}
 }
 
@@ -1113,6 +1127,7 @@ func (h *eventHandler) confidentialEngineFactory(
 		binaryHash,
 		spec.WorkflowID, spec.WorkflowOwner, workflowName.String(), spec.WorkflowTag,
 		attrs.VaultDonSecrets,
+		h.retrieveURL,
 		lggr,
 	)
 
