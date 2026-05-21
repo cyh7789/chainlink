@@ -188,41 +188,6 @@ func TestConfidentialModule_Execute(t *testing.T) {
 		assert.Equal(t, "enclave-output", val.GetStringValue())
 	})
 
-	t.Run("default namespace is main", func(t *testing.T) {
-		capReg := regmocks.NewCapabilitiesRegistry(t)
-		execCap := capmocks.NewExecutableCapability(t)
-
-		capReg.EXPECT().GetExecutable(matches.AnyContext, confidentialWorkflowsCapabilityID).
-			Return(execCap, nil).Once()
-
-		// Capture the request to inspect proto secrets.
-		var capturedReq capabilities.CapabilityRequest
-		execCap.EXPECT().Execute(matches.AnyContext, mock.Anything).
-			Run(func(_ context.Context, req capabilities.CapabilityRequest) {
-				capturedReq = req
-			}).
-			Return(capabilities.CapabilityResponse{Payload: respPayload}, nil).Once()
-
-		mod := NewConfidentialModule(
-			capReg,
-			"https://example.com/binary.wasm",
-			[]byte("hash"),
-			"wf-1", "owner", "name", "tag",
-			[]SecretIdentifier{{Key: "SECRET_A"}}, // no namespace
-			lggr,
-		)
-
-		_, err := mod.Execute(ctx, execReq, &stubExecutionHelper{executionID: "exec-1"})
-		require.NoError(t, err)
-
-		// Unmarshal the captured request payload and verify namespace defaulted to "main".
-		var confReq confworkflowtypes.ConfidentialWorkflowRequest
-		require.NoError(t, capturedReq.Payload.UnmarshalTo(&confReq))
-		require.Len(t, confReq.VaultDonSecrets, 1)
-		assert.Equal(t, "SECRET_A", confReq.VaultDonSecrets[0].Key)
-		assert.Equal(t, "main", confReq.VaultDonSecrets[0].GetNamespace())
-	})
-
 	t.Run("GetExecutable error", func(t *testing.T) {
 		capReg := regmocks.NewCapabilitiesRegistry(t)
 		capReg.EXPECT().GetExecutable(matches.AnyContext, confidentialWorkflowsCapabilityID).
@@ -320,20 +285,13 @@ func TestConfidentialModule_Execute(t *testing.T) {
 		require.NoError(t, capturedReq.Payload.UnmarshalTo(&confReq))
 
 		assert.Equal(t, "wf-abc", confReq.Execution.WorkflowId)
-		assert.Equal(t, "https://example.com/wasm", confReq.Execution.BinaryUrl)
+		assert.Equal(t, "https://example.com/wasm", confReq.BinaryUrl)
 		assert.Equal(t, binaryHash, confReq.Execution.BinaryHash)
 
 		// Verify the serialized ExecuteRequest round-trips.
 		var roundTripped sdkpb.ExecuteRequest
 		require.NoError(t, proto.Unmarshal(confReq.Execution.ExecuteRequest, &roundTripped))
 		assert.Equal(t, execReq.GetConfig(), roundTripped.GetConfig())
-
-		// Verify secrets.
-		require.Len(t, confReq.VaultDonSecrets, 2)
-		assert.Equal(t, "K1", confReq.VaultDonSecrets[0].Key)
-		assert.Equal(t, "ns1", confReq.VaultDonSecrets[0].GetNamespace())
-		assert.Equal(t, "K2", confReq.VaultDonSecrets[1].Key)
-		assert.Equal(t, "main", confReq.VaultDonSecrets[1].GetNamespace())
 	})
 }
 

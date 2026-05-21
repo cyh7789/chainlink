@@ -110,24 +110,10 @@ func (m *ConfidentialModule) Execute(
 		return nil, fmt.Errorf("failed to marshal ExecuteRequest: %w", err)
 	}
 
-	protoSecrets := make([]*confworkflowtypes.SecretIdentifier, len(m.vaultDonSecrets))
-	for i, s := range m.vaultDonSecrets {
-		// VaultDON treats "main" as the default namespace for secrets.
-		ns := s.Namespace
-		if ns == "" {
-			ns = "main"
-		}
-		protoSecrets[i] = &confworkflowtypes.SecretIdentifier{
-			Key:       s.Key,
-			Namespace: &ns,
-		}
-	}
-
 	capInput := &confworkflowtypes.ConfidentialWorkflowRequest{
-		VaultDonSecrets: protoSecrets,
+		BinaryUrl: m.binaryURL,
 		Execution: &confworkflowtypes.WorkflowExecution{
 			WorkflowId:     m.workflowID,
-			BinaryUrl:      m.binaryURL,
 			BinaryHash:     m.binaryHash,
 			ExecuteRequest: execReqBytes,
 			Owner:          m.workflowOwner,
