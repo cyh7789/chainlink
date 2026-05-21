@@ -27,14 +27,7 @@ const confidentialWorkflowsCapabilityID = "confidential-workflows@1.0.0-alpha"
 
 // WorkflowAttributes is the JSON structure stored in WorkflowSpec.Attributes.
 type WorkflowAttributes struct {
-	Confidential    bool               `json:"confidential"`
-	VaultDonSecrets []SecretIdentifier `json:"vault_don_secrets"`
-}
-
-// SecretIdentifier identifies a secret in VaultDON.
-type SecretIdentifier struct {
-	Key       string `json:"key"`
-	Namespace string `json:"namespace,omitempty"`
+	Confidential bool `json:"confidential"`
 }
 
 // ParseWorkflowAttributes parses the Attributes JSON from a WorkflowSpec.
@@ -65,16 +58,12 @@ func IsConfidential(data []byte) (bool, error) {
 // Instead of running WASM locally, it delegates execution to the
 // confidential-workflows capability via the CapabilitiesRegistry.
 type ConfidentialModule struct {
-	capRegistry core.CapabilitiesRegistry
-	// binaryURL is the registration-time URL kept for back-compat with callers
-	// that pass it; the actual fetch URL is minted per-execution via retrieveURL.
-	binaryURL       string
-	binaryHash      []byte
-	workflowID      string
-	workflowOwner   string
-	workflowName    string
-	workflowTag     string
-	vaultDonSecrets []SecretIdentifier
+	capRegistry   core.CapabilitiesRegistry
+	binaryHash    []byte
+	workflowID    string
+	workflowOwner string
+	workflowName  string
+	workflowTag   string
 	// retrieveURL mints a fresh pre-signed CloudFront URL via storage service
 	// NodeService.DownloadArtifact at every Execute call. Each workflow DON
 	// node gets its own URL with its own signature and expiry, which is why
@@ -88,24 +77,20 @@ var _ host.ModuleV2 = (*ConfidentialModule)(nil)
 
 func NewConfidentialModule(
 	capRegistry core.CapabilitiesRegistry,
-	binaryURL string,
 	binaryHash []byte,
 	workflowID, workflowOwner, workflowName, workflowTag string,
-	vaultDonSecrets []SecretIdentifier,
 	retrieveURL workflowtypes.LocationRetrieverFunc,
 	lggr logger.Logger,
 ) *ConfidentialModule {
 	return &ConfidentialModule{
-		capRegistry:     capRegistry,
-		binaryURL:       binaryURL,
-		binaryHash:      binaryHash,
-		workflowID:      workflowID,
-		workflowOwner:   workflowOwner,
-		workflowName:    workflowName,
-		workflowTag:     workflowTag,
-		vaultDonSecrets: vaultDonSecrets,
-		retrieveURL:     retrieveURL,
-		lggr:            lggr,
+		capRegistry:   capRegistry,
+		binaryHash:    binaryHash,
+		workflowID:    workflowID,
+		workflowOwner: workflowOwner,
+		workflowName:  workflowName,
+		workflowTag:   workflowTag,
+		retrieveURL:   retrieveURL,
+		lggr:          lggr,
 	}
 }
 

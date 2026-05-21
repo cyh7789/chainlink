@@ -1111,11 +1111,6 @@ func (h *eventHandler) confidentialEngineFactory(
 	decodedBinary []byte,
 	initDone chan<- error,
 ) (services.Service, error) {
-	attrs, err := v2.ParseWorkflowAttributes(spec.Attributes)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse workflow attributes: %w", err)
-	}
-
 	binaryHash := v2.ComputeBinaryHash(decodedBinary)
 
 	lggr := logger.Named(h.lggr, "WorkflowEngine.ConfidentialModule")
@@ -1123,10 +1118,8 @@ func (h *eventHandler) confidentialEngineFactory(
 
 	module := v2.NewConfidentialModule(
 		h.capRegistry,
-		spec.BinaryURL,
 		binaryHash,
 		spec.WorkflowID, spec.WorkflowOwner, workflowName.String(), spec.WorkflowTag,
-		attrs.VaultDonSecrets,
 		h.retrieveURL,
 		lggr,
 	)

@@ -60,23 +60,17 @@ func (s *stubExecutionHelper) EmitUserMetric(context.Context, *wfpb.WorkflowUser
 }
 
 func TestParseWorkflowAttributes(t *testing.T) {
-	t.Run("valid JSON with all fields", func(t *testing.T) {
-		data := []byte(`{"confidential":true,"vault_don_secrets":[{"key":"API_KEY"},{"key":"SIGNING_KEY","namespace":"custom-ns"}]}`)
+	t.Run("confidential true", func(t *testing.T) {
+		data := []byte(`{"confidential":true}`)
 		attrs, err := ParseWorkflowAttributes(data)
 		require.NoError(t, err)
 		assert.True(t, attrs.Confidential)
-		require.Len(t, attrs.VaultDonSecrets, 2)
-		assert.Equal(t, "API_KEY", attrs.VaultDonSecrets[0].Key)
-		assert.Empty(t, attrs.VaultDonSecrets[0].Namespace)
-		assert.Equal(t, "SIGNING_KEY", attrs.VaultDonSecrets[1].Key)
-		assert.Equal(t, "custom-ns", attrs.VaultDonSecrets[1].Namespace)
 	})
 
 	t.Run("empty data returns zero value", func(t *testing.T) {
 		attrs, err := ParseWorkflowAttributes(nil)
 		require.NoError(t, err)
 		assert.False(t, attrs.Confidential)
-		assert.Nil(t, attrs.VaultDonSecrets)
 
 		attrs, err = ParseWorkflowAttributes([]byte{})
 		require.NoError(t, err)
@@ -94,6 +88,15 @@ func TestParseWorkflowAttributes(t *testing.T) {
 		_, err := ParseWorkflowAttributes([]byte(`{not json}`))
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to parse workflow attributes")
+	})
+
+	t.Run("unknown keys are ignored", func(t *testing.T) {
+		// vault_don_secrets is a leftover key from a previous schema. Parser
+		// must tolerate it without failing.
+		data := []byte(`{"confidential":true,"vault_don_secrets":[{"key":"X"}]}`)
+		attrs, err := ParseWorkflowAttributes(data)
+		require.NoError(t, err)
+		assert.True(t, attrs.Confidential)
 	})
 }
 
@@ -177,16 +180,11 @@ func TestConfidentialModule_Execute(t *testing.T) {
 
 		mod := NewConfidentialModule(
 			capReg,
-			"https://example.com/binary.wasm",
 			[]byte("fakehash"),
 			"wf-123",
 			"owner-abc",
 			"my-workflow",
 			"v1",
-			[]SecretIdentifier{
-				{Key: "API_KEY"},
-				{Key: "SIGNING_KEY", Namespace: "custom-ns"},
-			},
 			stubRetrieveURL("https://example.com/binary.wasm"),
 			lggr,
 		)
@@ -206,7 +204,7 @@ func TestConfidentialModule_Execute(t *testing.T) {
 			Return(nil, errors.New("capability not found")).Once()
 
 		mod := NewConfidentialModule(
-			capReg, "", nil, "wf", "owner", "name", "tag", nil, stubRetrieveURL("https://example.com/x"), lggr,
+			capReg, nil, "wf", "owner", "name", "tag", stubRetrieveURL("https://example.com/x"), lggr,
 		)
 
 		_, err := mod.Execute(ctx, execReq, &stubExecutionHelper{})
@@ -224,7 +222,7 @@ func TestConfidentialModule_Execute(t *testing.T) {
 			Return(capabilities.CapabilityResponse{}, errors.New("enclave unavailable")).Once()
 
 		mod := NewConfidentialModule(
-			capReg, "", nil, "wf", "owner", "name", "tag", nil, stubRetrieveURL("https://example.com/x"), lggr,
+			capReg, nil, "wf", "owner", "name", "tag", stubRetrieveURL("https://example.com/x"), lggr,
 		)
 
 		_, err := mod.Execute(ctx, execReq, &stubExecutionHelper{})
@@ -242,7 +240,7 @@ func TestConfidentialModule_Execute(t *testing.T) {
 			Return(capabilities.CapabilityResponse{Payload: nil}, nil).Once()
 
 		mod := NewConfidentialModule(
-			capReg, "", nil, "wf", "owner", "name", "tag", nil, stubRetrieveURL("https://example.com/x"), lggr,
+			capReg, nil, "wf", "owner", "name", "tag", stubRetrieveURL("https://example.com/x"), lggr,
 		)
 
 		_, err := mod.Execute(ctx, execReq, &stubExecutionHelper{})
@@ -253,7 +251,7 @@ func TestConfidentialModule_Execute(t *testing.T) {
 	t.Run("missing URL retriever errors", func(t *testing.T) {
 		capReg := regmocks.NewCapabilitiesRegistry(t)
 		mod := NewConfidentialModule(
-			capReg, "", nil, "wf", "owner", "name", "tag", nil, nil, lggr,
+			capReg, nil, "wf", "owner", "name", "tag", nil, lggr,
 		)
 
 		_, err := mod.Execute(ctx, execReq, &stubExecutionHelper{})
@@ -269,7 +267,7 @@ func TestConfidentialModule_Execute(t *testing.T) {
 			},
 		)
 		mod := NewConfidentialModule(
-			capReg, "", nil, "wf", "owner", "name", "tag", nil, failingRetrieve, lggr,
+			capReg, nil, "wf", "owner", "name", "tag", failingRetrieve, lggr,
 		)
 
 		_, err := mod.Execute(ctx, execReq, &stubExecutionHelper{})
@@ -294,16 +292,11 @@ func TestConfidentialModule_Execute(t *testing.T) {
 		binaryHash := ComputeBinaryHash([]byte("some-binary"))
 		mod := NewConfidentialModule(
 			capReg,
-			"https://example.com/wasm",
 			binaryHash,
 			"wf-abc",
 			"0xowner",
 			"my-workflow",
 			"v2",
-			[]SecretIdentifier{
-				{Key: "K1", Namespace: "ns1"},
-				{Key: "K2"},
-			},
 			stubRetrieveURL("https://presigned.cloudfront.example.com/wasm?sig=abc"),
 			lggr,
 		)
