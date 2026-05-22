@@ -53,7 +53,7 @@ require (
 	github.com/lib/pq v1.12.3
 	github.com/moby/moby/client v0.4.1
 	github.com/pkg/errors v0.9.1
-	github.com/rs/zerolog v1.34.0
+	github.com/rs/zerolog v1.35.1
 	github.com/smartcontractkit/chain-selectors v1.0.100
 	github.com/smartcontractkit/chainlink-common v0.11.2-0.20260521164451-06757a49ab15
 	github.com/smartcontractkit/chainlink-common/keystore v1.1.0
