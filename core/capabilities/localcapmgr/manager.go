@@ -50,6 +50,15 @@ func runningKey(capID string, donID uint32) string {
 	return fmt.Sprintf("%s:%d", capID, donID)
 }
 
+// CapabilityDonIDConfigKey is the reserved key in a capability's merged config
+// (TOML + on-chain SpecConfig + host injection) that carries the authoritative
+// on-chain DON ID this specific plugin process was spawned for. It is set by
+// buildConfigJSON from info.donID, which originates from the syncer's view of
+// CapabilitiesRegistry.sol. Plugins should treat this as the source of truth
+// for their own DON identity. Setting this key in TOML or on-chain SpecConfig
+// has no effect; the host-injected value always wins.
+const CapabilityDonIDConfigKey = "capability_don_id"
+
 type localCapabilityManager struct {
 	services.StateMachine
 	lggr logger.Logger
@@ -281,9 +290,9 @@ func (m *localCapabilityManager) buildConfigJSON(info *capabilityInfo) (string, 
 		}
 	}
 
-	if len(merged) == 0 {
-		return "{}", nil
-	}
+	// Host-injected: overwrite anything TOML or on-chain SpecConfig may have set.
+	// See CapabilityDonIDConfigKey doc.
+	merged[CapabilityDonIDConfigKey] = info.donID
 
 	b, err := json.Marshal(merged)
 	if err != nil {

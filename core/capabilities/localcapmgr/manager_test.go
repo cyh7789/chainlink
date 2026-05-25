@@ -483,15 +483,43 @@ func TestBuildConfigJSON(t *testing.T) {
 		assert.Equal(t, "yes", got["localOnly"], "local-only keys included")
 	})
 
-	t.Run("empty config returns empty JSON object", func(t *testing.T) {
+	t.Run("empty config still carries injected capability_don_id", func(t *testing.T) {
 		mgr := &localCapabilityManager{
 			lggr:     lggr,
 			localCfg: &testLocalCapabilities{allowlisted: map[string]bool{"cap@1.0.0": true}},
 		}
-		info := &capabilityInfo{capID: "cap@1.0.0", config: registrysyncer.CapabilityConfiguration{}}
+		info := &capabilityInfo{capID: "cap@1.0.0", donID: 7, config: registrysyncer.CapabilityConfiguration{}}
 		result, err := mgr.buildConfigJSON(info)
 		require.NoError(t, err)
-		assert.Equal(t, "{}", result)
+
+		var got map[string]any
+		require.NoError(t, json.Unmarshal([]byte(result), &got))
+		assert.EqualValues(t, 7, got[CapabilityDonIDConfigKey])
+		assert.Len(t, got, 1, "no other keys present")
+	})
+
+	t.Run("capability_don_id overrides any TOML or onchain attempt", func(t *testing.T) {
+		mgr := &localCapabilityManager{
+			lggr: lggr,
+			localCfg: &testLocalCapabilities{
+				allowlisted: map[string]bool{"cap@1.0.0": true},
+				configs: map[string]*testCapabilityNodeConfig{
+					"cap@1.0.0": {cfg: map[string]string{CapabilityDonIDConfigKey: "999"}},
+				},
+			},
+		}
+		onchainBytes := mustMarshalCapConfig(t, map[string]string{CapabilityDonIDConfigKey: "888"})
+		info := &capabilityInfo{
+			capID:  "cap@1.0.0",
+			donID:  42,
+			config: registrysyncer.CapabilityConfiguration{Config: onchainBytes},
+		}
+		result, err := mgr.buildConfigJSON(info)
+		require.NoError(t, err)
+
+		var got map[string]any
+		require.NoError(t, json.Unmarshal([]byte(result), &got))
+		assert.EqualValues(t, 42, got[CapabilityDonIDConfigKey], "host injection wins over both TOML and onchain")
 	})
 
 	t.Run("invalid onchain proto falls back to local config", func(t *testing.T) {
