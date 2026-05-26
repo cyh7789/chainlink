@@ -14,8 +14,8 @@ replace github.com/smartcontractkit/chainlink/core/scripts/cre/environment/examp
 // Using a separate `require` here to avoid surrounding line changes
 // creating potential merge conflicts.
 require (
-	github.com/smartcontractkit/chainlink/deployment v0.0.0-20251021194914-c0e3fec1a97c
-	github.com/smartcontractkit/chainlink/v2 v2.32.0
+	github.com/smartcontractkit/chainlink/deployment v0.0.0-20260526092645-7494b9191307
+	github.com/smartcontractkit/chainlink/v2 v2.0.0-20260526092645-7494b9191307
 )
 
 require (
@@ -54,8 +54,8 @@ require (
 	github.com/smartcontractkit/chainlink-testing-framework/framework v0.16.2
 	github.com/smartcontractkit/chainlink-testing-framework/framework/components/dockercompose v0.1.23
 	github.com/smartcontractkit/chainlink-testing-framework/seth v1.51.5
-	github.com/smartcontractkit/chainlink/core/scripts/cre/environment/examples/workflows/proof-of-reserve/cron-based v0.0.0-00010101000000-000000000000
-	github.com/smartcontractkit/chainlink/system-tests/lib v0.0.0-00010101000000-000000000000
+	github.com/smartcontractkit/chainlink/core/scripts/cre/environment/examples/workflows/proof-of-reserve/cron-based v0.0.0-20260526092645-7494b9191307
+	github.com/smartcontractkit/chainlink/system-tests/lib v0.0.0-20260526092645-7494b9191307
 	github.com/smartcontractkit/libocr v0.0.0-20260508200755-99940c85383c
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
