@@ -878,8 +878,13 @@ func (e *Engine) startExecution(ctx context.Context, wrappedTriggerEvent enqueue
 
 	// Track execution error for deferred event emission
 	var execErr error
+	var execHelper *ExecutionHelper
 	defer func() {
 		_ = events.EmitExecutionFinishedEvent(ctx, loggerLabels, executionStatus, executionID, execErr, lggr)
+		if execHelper != nil {
+			profile := buildExecutionProfile(e.cfg.WorkflowID, executionID, startTime, e.cfg.Clock.Now(), executionStatus, execHelper.executionProfile)
+			_ = events.EmitExecutionProfileEvent(ctx, profile)
+		}
 		e.cfg.Hooks.OnExecutionFinished(executionID, executionStatus)
 		if execErr != nil {
 			e.cfg.Hooks.OnExecutionError(execErr.Error())
@@ -906,9 +911,10 @@ func (e *Engine) startExecution(ctx context.Context, wrappedTriggerEvent enqueue
 		triggerDrop(monitoring.TriggerDropReasonExecutionResponseLimitInvalid)
 		return
 	}
-	execHelper := &ExecutionHelper{
+	execHelper = &ExecutionHelper{
 		Engine: e, WorkflowExecutionID: executionID, ExecutionTimestamp: executionTimestamp,
 		UserLogChan: userLogChan, TimeProvider: timeProvider, SecretsFetcher: e.secretsFetcher(executionID),
+		executionProfile: newExecutionProfileCollector(),
 	}
 	execHelper.initLimiters(e.cfg.LocalLimiters)
 	e.metrics.With(platform.KeyTriggerID, wrappedTriggerEvent.triggerCapID).RecordTriggerPayloadBytes(ctx, int64(proto.Size(triggerEvent.Payload)))

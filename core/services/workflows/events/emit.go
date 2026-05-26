@@ -462,7 +462,11 @@ func emitProtoMessage(ctx context.Context, msg proto.Message) error {
 		return fmt.Errorf("unknown message type: %T", msg)
 	}
 
-	return beholder.GetEmitter().Emit(ctx, b,
+	return emitRawMessage(ctx, b, schema, entity)
+}
+
+func emitRawMessage(ctx context.Context, body []byte, schema, entity string) error {
+	return beholder.GetEmitter().Emit(ctx, body,
 		"beholder_data_schema", schema, // required
 		"beholder_domain", "platform", // required
 		"beholder_entity", entity) // required

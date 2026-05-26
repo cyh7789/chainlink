@@ -1,9 +1,11 @@
 package events_test
 
 import (
+	"encoding/json"
 	"errors"
 	"regexp"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -141,5 +143,34 @@ func TestEmit(t *testing.T) {
 		assert.NotNil(t, msg2.CreInfo)
 		assert.NotNil(t, msg2.Workflow)
 		// Labels not utilized, left unchecked
+	})
+
+	t.Run(events.WorkflowExecutionProfile, func(t *testing.T) {
+		workflowID := "workflow_" + uuid.NewString()
+		start := time.Date(2024, 1, 2, 3, 4, 5, 0, time.UTC)
+		end := start.Add(2 * time.Second)
+		profile := events.NewExecutionProfile(workflowID, executionID, start, end, "completed", []events.ExecutionProfileStep{
+			{
+				StepID:       "1",
+				StartTime:    start.Add(100 * time.Millisecond).UTC().Format(time.RFC3339Nano),
+				EndTime:      start.Add(500 * time.Millisecond).UTC().Format(time.RFC3339Nano),
+				CapabilityID: capabilityID,
+				HasError:     false,
+			},
+		})
+		require.NoError(t, events.EmitExecutionProfileEvent(t.Context(), profile))
+
+		msgs := beholderObserver.Messages(t, "beholder_entity", "workflows.v2."+events.WorkflowExecutionProfile)
+		require.Len(t, msgs, 1)
+
+		var received events.ExecutionProfile
+		require.NoError(t, json.Unmarshal(msgs[0].Body, &received))
+		assert.Equal(t, workflowID, received.WorkflowID)
+		assert.Equal(t, executionID, received.WorkflowExecutionID)
+		assert.Equal(t, "completed", received.Status)
+		require.Len(t, received.Steps, 1)
+		assert.Equal(t, "1", received.Steps[0].StepID)
+		assert.Equal(t, capabilityID, received.Steps[0].CapabilityID)
+		assert.False(t, received.Steps[0].HasError)
 	})
 }
