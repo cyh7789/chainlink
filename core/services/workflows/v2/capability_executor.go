@@ -227,15 +227,13 @@ func (c *ExecutionHelper) callCapability(ctx context.Context, request *sdkpb.Cap
 	defer execCancel()
 
 	executionStart := c.cfg.Clock.Now()
-	if c.executionProfile != nil {
-		c.executionProfile.recordStepStart(meteringRef, request.Id, executionStart)
-	}
+	c.executionProfile.recordStepStart(meteringRef, request.Id, executionStart)
+
 	capResp, err := capability.Execute(execCtx, capReq)
 	executionEnd := c.cfg.Clock.Now()
 	executionDuration := executionEnd.Sub(executionStart)
-	if c.executionProfile != nil {
-		c.executionProfile.recordStepEnd(meteringRef, executionEnd, err != nil)
-	}
+	c.executionProfile.recordStepEnd(meteringRef, executionEnd, err != nil)
+
 	c.metrics.With(platform.KeyCapabilityID, request.Id).UpdateCapabilityExecutionDurationHistogram(ctx, int64(executionDuration.Seconds()))
 	if err != nil {
 		var capabilityError caperrors.Error

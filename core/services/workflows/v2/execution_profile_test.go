@@ -28,3 +28,28 @@ func TestExecutionProfileCollector(t *testing.T) {
 	assert.Equal(t, "cap@1.0.0", profile.Steps[0].CapabilityID)
 	assert.False(t, profile.Steps[0].HasError)
 }
+
+func TestExecutionProfileCollectorInsertionOrder(t *testing.T) {
+	t.Parallel()
+
+	collector := newExecutionProfileCollector()
+	start := time.Date(2024, 6, 1, 12, 0, 0, 0, time.UTC)
+
+	collector.recordStepStart("1", "cap@1.0.0", start.Add(10*time.Millisecond))
+	collector.recordStepStart("2", "cap@2.0.0", start.Add(20*time.Millisecond))
+	collector.recordStepEnd("1", start.Add(30*time.Millisecond), false)
+	collector.recordStepEnd("2", start.Add(40*time.Millisecond), false)
+
+	profile := buildExecutionProfile(
+		"workflow-id",
+		"exec-id",
+		start,
+		start.Add(time.Second),
+		store.StatusCompleted,
+		collector,
+	)
+
+	require.Len(t, profile.Steps, 2)
+	assert.Equal(t, "1", profile.Steps[0].StepID)
+	assert.Equal(t, "2", profile.Steps[1].StepID)
+}
