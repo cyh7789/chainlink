@@ -21,9 +21,12 @@ jobs:
           fetch-depth: 1
 
       - uses: ./.github/actions/prconflicts
+        env: # pangolin-fix: pass untrusted ref values via environment variables instead of direct expression interpolation
+          PR_HEAD_REF: ${{ github.head_ref }} # pangolin-fix: store attacker-controllable head ref outside shell script text
+          PR_BASE_REF: ${{ github.base_ref }} # pangolin-fix: keep ref handling consistent and avoid direct interpolation
         with:
           github-token: ${{ github.token }}
           repository: ${{ github.repository }}
           pr-number: ${{ github.event.pull_request.number }}
-          head-ref: ${{ github.head_ref }}
-          base-ref: ${{ github.base_ref }}
+          head-ref: $PR_HEAD_REF # pangolin-fix: reference environment variable rather than untrusted GitHub context directly
+          base-ref: $PR_BASE_REF # pangolin-fix: reference environment variable rather than GitHub context directly
